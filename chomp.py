@@ -1,0 +1,113 @@
+import sys
+import copy
+import pygame
+
+def make_move(board, row, col):
+    new_board = copy.deepcopy(board)
+    if new_board[row][col] == 'X':
+        return new_board
+    
+    for r in range(row, len(new_board)):
+        for c in range(col, len(new_board[r])):
+            new_board[r][c] = 'X'
+    return new_board
+
+def game_over(board):
+    return board[-1][-1] == 'X'
+
+def heuristic(board):
+    remaining_cells = sum(row.count('O') for row in board)
+    return remaining_cells
+
+def max_value(board, alpha, beta, depth):
+    if game_over(board) or depth == 0:
+        return heuristic(board), None
+    
+    value = float('-inf')
+    best_move = None
+    for row in range(len(board)):
+        for col in range(len(board[row])):
+            if board[row][col] == 'O':
+                new_board = make_move(board, row, col)
+                min_val, _ = min_value(new_board, alpha, beta, depth - 1)
+                if min_val > value:
+                    value = min_val
+                    best_move = (row, col)
+                alpha = max(alpha, value)
+                if alpha >= beta:
+                    break
+    return value, best_move
+
+def min_value(board, alpha, beta, depth):
+    if game_over(board) or depth == 0:
+        return heuristic(board), None
+    
+    value = float('inf')
+    best_move = None
+    for row in range(len(board)):
+        for col in range(len(board[row])):
+            if board[row][col] == 'O':
+                new_board = make_move(board, row, col)
+                max_val, _ = max_value(new_board, alpha, beta, depth - 1)
+                if max_val < value:
+                    value = max_val
+                    best_move = (row, col)
+                beta = min(beta, value)
+                if beta <= alpha:
+                    break
+    return value, best_move
+
+def ai_move(board, depth):
+    value, move = max_value(board, float('-inf'), float('inf'), depth)
+    row, col = move
+    return make_move(board, row, col)
+
+def draw_board(screen, board, font):
+    cell_size = 100
+    for row in range(len(board)):
+        for col in range(len(board[row])):
+            x, y = col * cell_size, row * cell_size
+            color = (0, 0, 255) if board[row][col] == 'O' else (255, 0, 0)
+            pygame.draw.rect(screen, color, (x, y, cell_size, cell_size))
+            text = font.render(board[row][col], True, (255, 255, 255))
+            screen.blit(text, (x + cell_size // 2 - text.get_width() // 2, y + cell_size // 2 - text.get_height() // 2))
+
+def main():
+    pygame.init()
+    screen = pygame.display.set_mode((800, 600))
+    pygame.display.set_caption("Chomp Game")
+    clock = pygame.time.Clock()
+    font = pygame.font.Font(None, 36)
+
+    rows, cols = 4, 4
+    board = [['O' for _ in range(cols)] for _ in range(rows)]
+    depth = 4
+
+    running = True
+    while running:
+        screen.fill((255, 255, 255))
+        draw_board(screen, board, font)
+        
+        for event in pygame.event.get():
+            if event.type == pygame.QUIT:
+                running = False
+            elif event.type == pygame.MOUSEBUTTONDOWN:
+                x, y = pygame.mouse.get_pos()
+                row, col = y // 100, x // 100
+                board = make_move(board, row, col)
+                if game_over(board):
+                    print("Human wins!")
+                    running = False
+                else:
+                    board = ai_move(board, depth)  # Replace this with your actual AI implementation
+                    if game_over(board):
+                        print("AI wins!")
+                        running = False
+
+        pygame.display.flip()
+        clock.tick(60)
+
+    pygame.quit()
+
+if __name__ == "__main__":
+    main()
